@@ -121,7 +121,30 @@ jobs:
         run: |
           brew install re2c ninja redis hiredis
 
+      - name: Cache Z3
+        id: cache-z3
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/z3-install
+            ${{ github.workspace }}/z3-build
+          key: z3-${{ matrix.os }}-${{ matrix.cxx_compiler }}-z3-4.15.4-${{ hashFiles('.github/workflows/build.yml') }}
+          restore-keys: |
+            z3-${{ matrix.os }}-${{ matrix.cxx_compiler }}-z3-4.15.4-
+
+      - name: Set Z3 environment (cache hit)
+        if: steps.cache-z3.outputs.cache-hit == 'true'
+        run: |
+          echo "Z3_PREFIX=${{ github.workspace }}/z3-install" >> "${GITHUB_ENV}"
+          echo "Z3_LIBDIR=${{ github.workspace }}/z3-install/lib" >> "${GITHUB_ENV}"
+          if [[ "${RUNNER_OS}" == "macOS" ]]; then
+            echo "DYLD_LIBRARY_PATH=${{ github.workspace }}/z3-install/lib:${DYLD_LIBRARY_PATH-}" >> "${GITHUB_ENV}"
+          else
+            echo "LD_LIBRARY_PATH=${{ github.workspace }}/z3-install/lib:${LD_LIBRARY_PATH-}" >> "${GITHUB_ENV}"
+          fi
+
       - name: Build Z3 (from source)
+        if: steps.cache-z3.outputs.cache-hit != 'true'
         run: |
           set -euxo pipefail
 
